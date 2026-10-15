@@ -12,11 +12,67 @@ Built with O(∩_∩)O for JOINTS Hackathon 2026 ⚙️
 
 </div>
 
-<div align="center">
-  
-## Team
+## System Architecture
 
-</div>
+```mermaid
+flowchart LR
+    subgraph MOBILE["Mobile app (Flutter) - patient"]
+        direction TB
+        UI["Presentation<br/>go_router, flutter_bloc Cubit, fl_chart"]
+        DOM["Domain<br/>entities, repository interfaces, use cases"]
+        DATA["Data<br/>repository impl, DTOs, supabase_flutter"]
+        HIVE[("hive_ce<br/>local results + outbox<br/>flutter_secure_storage: session")]
+        subgraph DSPM["DSP module (isolate, on-device)"]
+            direction TB
+            SENS["sensors_plus<br/>accelerometer ~100 Hz"]
+            PIPE["QC gate, resample 50 Hz, band-pass 1-20 Hz<br/>Welch PSD, features, rule-based decision"]
+            SENS --> PIPE
+        end
+        UI --> DOM --> DATA
+        DATA --> HIVE
+        DOM --> SENS
+        PIPE --> DOM
+    end
+
+    subgraph WEB["Web dashboard (React Router) - neurologist"]
+        direction TB
+        WUI["Routes / loaders<br/>patient list, trend charts, medication timeline"]
+        WCL["supabase-js client<br/>email + password session"]
+        WUI --> WCL
+    end
+
+    subgraph SUPA["Supabase backend"]
+        direction TB
+        AUTH["Auth<br/>anonymous sign-in (patient)<br/>email + password (doctor)<br/>JWT: role authenticated"]
+        API["PostgREST + RPC<br/>connect_to_doctor, disconnect,<br/>create_measurement (idempotent on id),<br/>list_my_measurements,<br/>list_patient_measurements"]
+        subgraph PG["Postgres + Row Level Security"]
+            direction TB
+            T1[("profiles<br/>id, role, display_name, connection_code")]
+            T2[("patient_doctor_links<br/>patient_id, doctor_id, linked_at, revoked_at")]
+            T3[("measurements<br/>status, features jsonb, algo_version,<br/>calibrated, last_dose_at, device jsonb")]
+            T4[("medication_schedules / medication_logs<br/>contract pending")]
+        end
+        AUTH --> API
+        API --> PG
+    end
+
+    DATA --> AUTH
+    DATA --> API
+    WCL --> AUTH
+    WCL --> API
+    API -.-> WCL
+
+    classDef store fill:#e8f0fe,stroke:#2941a3,color:#141a2e
+    classDef pending fill:#fff5c2,stroke:#735c00,color:#735c00
+    class HIVE,T1,T2,T3 store
+    class T4 pending
+```
+
+## Demo
+
+Coming Soon yh
+
+## Team
 
 Built by **nama timnya apa**, a 4-person team for JOINTS Hackathon 2026 from the Faculty of Computer Science, Universitas Indonesia 💾
 
